@@ -9,9 +9,9 @@ SampleData  = 1:32;
 N = 100;
 Long = 1602;%一帧长度为12816字节  8字节一截取 12816/8=1602
 
-filePath = '.\\初始位置校准扫描数据\\'
-fileName = '2021-09-13 16-34-57';
-fileName2 = '2021-09-13 16-34-56'; 
+filePath = '.\\第一次\\'
+fileName = '2021-09-27 16-15-13';
+fileName2 = '2021-09-27 16-15-12'; 
 fileID = fopen([filePath,'IF_',fileName2,'.bin']);
 % fileID = fopen('IF.bin');
 IF_ReadData0= fread(fileID,'uint64');

@@ -66,10 +66,14 @@ def cal_cross_zero_times(df,col,raster_resolution,axis):
 
 if __name__ == "__main__":
     # columns = ['x','y','z','Tx','Ty','Tz','532-high','633-high','780-high','852-1','532-2','633-2','780-2','852-2','532-3','633-3','780-3','852-3','532-4','633-4','780-4','852-4','unusd']
-    # file_name = "movex_negative"
-    file_name = "movex_positive"
-    # data = pd.read_csv('.\\movex_negative.csv')
-    data = pd.read_csv(file_name+'.csv')
+    file_name = "movex_negative"
+    columns = ['x', 'y', 'z', 'tx', 'ty', 'tz', '532_high', '633_high', '780_high',\
+    '852_high', '532_zero', '633_zero', '780_zero', '852_zero']
+    file_path = "E:\\软件架构资料学习\\测试采集数据\\扫描数据20211012\\211011初始位置数据\\1\\"
+    # csv_name = "movex_negative.csv"
+    csv_name = "movex_positive.csv"
+    data = pd.read_csv(file_path+csv_name)
+    data.columns = columns
     # data = pd.read_csv('E:\\软件架构资料学习\\coarseScan\\movex_positive.csv')
     data = data.drop(data[data['x'] == 0].index)
     data = data.sort_values(by='x')
@@ -201,14 +205,16 @@ if __name__ == "__main__":
     """
 
     df_filter = df_filter.reset_index(drop=True)
-    raster_resolution = 0.008 #8um 栅格中间距离，其实是周期的一半，ppt里左右两侧不一致左侧可能16um，右侧16.2um？
+    raster_resolution = 0.008 / 2#8um 栅格中间距离，其实是周期的一半，ppt里左右两侧不一致左侧可能16um，右侧16.2um？
+
     cycle_nums = int((df_filter["x"].max()-df_filter['x'].min())/raster_resolution)
     interval = int(len(df_filter)/cycle_nums)
     fig2 = plt.figure()
     df_interval = pd.DataFrame(columns = np.arange(0,cycle_nums,1))
     std_threshold = {}
     cross_threshold = 4 # 过0 的次数，判断是否是周期范围内
-    std_ratio = 0.1# 最大方差的0.1范围内认为都是周期。
+    std_ratio = 0.8# 最大方差的0.1范围内认为都是周期。
+    over_dict = {}
     for ind,col in enumerate(columns):
         temp_max = 0
         for i in range(cycle_nums):
@@ -221,26 +227,49 @@ if __name__ == "__main__":
         std_threshold[col] = temp_max  #
         ax1 = fig2.add_subplot(1, 4, ind + 1)
         df_interval.plot(y=np.arange(0,cycle_nums,1), kind='bar',title = col+'_diff',ax =ax1)
+
+        temp_list = []
+        for i in range(cycle_nums):
+            if df_interval.loc['var',i] > temp_max * std_ratio:
+                temp_list.append(i)
+        over_dict[col] = temp_list
+    plt.show()
+    plt.close()
+
+    fig4 = plt.figure()
+    for ind,col in enumerate(columns):
+        fig4.add_subplot(1, 4, ind + 1)
+        min_ind = min(over_dict[col])
+        max_ind = max(over_dict[col])
+        over_slice = df_filter.iloc[min_ind*interval:(max_ind+1)*interval,:]
+        plt.plot(df_filter['x'], df_filter[col+'_diff_filter'])
+        plt.plot(over_slice['x'],over_slice[col+'_diff_filter'])
+        plt.title(col+'over_threshold')
     plt.show()
     plt.close()
 
 
-    # 找到 方差为0的点，并对每个点前后取半个周期判断标准差是否在阈值内，判断该点是否为0.
+    # 在识别到的方差较大的区间内，找到 方差为0的点，并对每个点前后取半个周期判断标准差是否在阈值内，判断该点是否为0.
+    columns2 = [ '633_high', '780_high', '852_high']
     res_dict = {}
-    for col in columns :
-        df_filter.loc[:,'through_zero_'+col] = forward_through_zero(df_filter[col+"_diff_filter"].values.tolist())
-        slice_through_zero = df_filter[df_filter['through_zero_'+col] == 1]
+    for col in columns2 :
+        min_ind = min(over_dict[col])
+        max_ind = max(over_dict[col])
+        over_slice = df_filter.iloc[min_ind * interval:(max_ind + 1) * interval, :]
+        over_slice.loc[:,'through_zero_'+col] = forward_through_zero(over_slice[col+"_diff_filter"].values.tolist())
+        slice_through_zero = over_slice[over_slice['through_zero_'+col] == 1]
         res = []
         """
         对每一个std=0的点，查看前后interval 个，看std是否符合要求
         """
         for index,row in slice_through_zero.iterrows():
-            upper = min(len(df_filter)-1,int(index+0.5*interval))
-            lower = max(0,int(index - 0.5*interval))
-            temp_slice = df_filter.loc[lower:upper,:]
-            temp_std = temp_slice[col+"_diff_filter"].std()
-            if temp_std >= std_threshold[col]*(1-std_ratio) and cal_cross_zero_times(temp_slice,col+"_diff_filter",raster_resolution,'x'): ## 该导数为0点是峰值
-                res.append(index)
+            # upper = min(len(df_filter)-1,int(index+0.5*interval))
+            # lower = max(0,int(index - 0.5*interval))
+            # temp_slice = df_filter.loc[lower:upper,:]
+            # temp_std = temp_slice[col+"_diff_filter"].std()
+            # if temp_std >= std_threshold[col]*(1-std_ratio) and cal_cross_zero_times(temp_slice,col+"_diff_filter",raster_resolution,'x'): ## 该导数为0点是峰值
+            #     res.append(index)
+            res.append(index)
         res_dict[col] = res
 
     """
@@ -248,7 +277,7 @@ if __name__ == "__main__":
     """
     print('start to plot')
     fig3 = plt.figure(figsize=(30,40))
-    for i,col in enumerate(columns):
+    for i,col in enumerate(columns2):
         ax1 = fig3.add_subplot(4, 1, i+1)
         ax1.plot(df_filter['x'], df_filter[col])
         x_l = []
@@ -260,7 +289,8 @@ if __name__ == "__main__":
         for inddd in range(len(x_l)):
             plt.annotate(x_l[inddd], xy=(x_l[inddd], y_l[inddd]))
         plt.title(col)
-    plt.savefig(file_name+'.png')
+    # plt.savefig(file_name+'.png')
+    plt.show()
 
 
 

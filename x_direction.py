@@ -82,7 +82,12 @@ def func2(x, C, p_ans):
 
 if __name__ == "__main__":
     # columns = ['x','y','z','Tx','Ty','Tz','532-high','633-high','780-high','852-1','532-2','633-2','780-2','852-2','532-3','633-3','780-3','852-3','532-4','633-4','780-4','852-4','unusd']
-    data = pd.read_csv('.\\movex_negative.csv')
+    columns = ['x', 'y', 'z', 'tx', 'ty', 'tz', '532_high', '633_high', '780_high',\
+    '852_high', '532_zero', '633_zero', '780_zero', '852_zero']
+    file_path = "E:\\软件架构资料学习\\测试采集数据\\扫描数据20211012\\211011初始位置数据\\1\\"
+    csv_name = "movex_negative.csv"
+    data = pd.read_csv(file_path+csv_name)
+    data.columns = columns
     # data = pd.read_csv('E:\\软件架构资料学习\\coarseScan\\movex_positive.csv')
     data = data.drop(data[data['x'] == 0].index)
     data = data.sort_values(by='x')
